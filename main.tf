@@ -94,6 +94,12 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+#CloudWatch logs
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/${var.app_name}"
+  retention_in_days = 7
+}
+
 #ECS configs
 resource "aws_ecs_cluster" "code-healing-cluster" {
   name = "code-healing-cluster"
@@ -123,6 +129,14 @@ resource "aws_ecs_task_definition" "code-healing-task" {
           protocol      = "tcp"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.app.name
+          "awslogs-region"        = "af-south-1"
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
     }
   ])
 }
@@ -158,10 +172,13 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       identifiers = [aws_iam_openid_connect_provider.github.arn]
     }
     condition {
-      test     = "StringLike"
-      variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:Tladi95/AWS-code-healing-system-terraform-code:*"]
-    }
+  test     = "StringLike"
+  variable = "token.actions.githubusercontent.com:sub"
+  values   = [
+    "repo:Tladi95@127900527/Aws-code-healing-system@1379459556:*",
+    "repo:Tladi95/Aws-code-healing-system:*",
+   ]
+  }
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:aud"
